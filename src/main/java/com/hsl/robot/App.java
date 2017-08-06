@@ -5,7 +5,9 @@ import java.io.File;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import javax.swing.UIManager;
 
@@ -38,10 +40,12 @@ public class App {
 	private String cookie;
 	private QRCodeFrame qrCodeFrame;
 	
-	private JSONObject SyncKey, User, BaseRequest;
+	private JSONObject SyncKey, User, BaseRequest, Master;
 	
 	// 微信联系人列表，可聊天的联系人列表
 	private JSONArray MemberList, ContactList;
+
+	private Map<String, String> contactMap = new HashMap<String, String>();
 	
 	// 微信特殊账号
 	private List<String> SpecialUsers = Arrays.asList("newsapp", "fmessage", "filehelper", "weibo", "qqmail", "fmessage", "tmessage", "qmessage", "qqsync", "floatbottle", "lbsapp", "shakeapp", "medianote", "qqfriend", "readerapp", "blogapp", "facebookapp", "masssendapp", "meishiapp", "feedsapp", "voip", "blogappweixin", "weixin", "brandsessionholder", "weixinreminder", "wxid_novlwrv3lqwv11", "gh_22b87fa7cb3c", "officialaccounts", "notification_messages", "wxid_novlwrv3lqwv11", "gh_22b87fa7cb3c", "wxitil", "userexperience_alarm", "notification_messages");
@@ -96,18 +100,18 @@ public class App {
 				"_" , DateKit.getCurrentUnixTime())
 				.receive(output);
 
-		if(null != output && output.exists() && output.isFile()){
-			EventQueue.invokeLater(new Runnable() {
-				public void run() {
-					try {
-						UIManager.setLookAndFeel("com.sun.java.swing.plaf.nimbus.NimbusLookAndFeel");
-						qrCodeFrame = new QRCodeFrame(output.getPath());
-					} catch (Exception e) {
-						e.printStackTrace();
-					}
-				}
-			});
-		}
+//		if(null != output && output.exists() && output.isFile()){
+//			EventQueue.invokeLater(new Runnable() {
+//				public void run() {
+//					try {
+//						UIManager.setLookAndFeel("com.sun.java.swing.plaf.nimbus.NimbusLookAndFeel");
+//						qrCodeFrame = new QRCodeFrame(output.getPath());
+//					} catch (Exception e) {
+//						e.printStackTrace();
+//					}
+//				}
+//			});
+//		}
 	}
 	
 	/**
@@ -341,15 +345,20 @@ public class App {
 							if(SpecialUsers.contains(contact.getString("UserName"))){
 								continue;
 							}
-							//群聊
-							if(contact.getString("UserName").indexOf("@@") != -1){
-								continue;
-							}
+//							//群聊
+//							if(contact.getString("UserName").indexOf("@@") != -1){
+//								continue;
+//							}
 							//自己
 							if(contact.getString("UserName").equals(this.User.getString("UserName"))){
 								continue;
 							}
+							if (contact.getString("NickName").equalsIgnoreCase("Daniel")) {
+								LOGGER.info("Daniel的username是" + contact.getString("UserName"));
+								Master = contact;
+							}
 							ContactList.add(contact);
+							contactMap.put(contact.getString("UserName"), contact.getString("NickName"));
 						}
 						return true;
 					}
@@ -491,15 +500,21 @@ public class App {
 			String content = msg.getString("Content");
 			
 			if(msgType == 51){
-				LOGGER.info("[*] 成功截获微信初始化消息");
+				LOGGER.info("[*] 成功截获微信初始化消息:" + msg.toString());
 			} else if(msgType == 1){
 				if(SpecialUsers.contains(msg.getString("ToUserName"))){
 					continue;
 				} else if(msg.getString("FromUserName").equals(User.getString("UserName"))){
 					continue;
-				} else if (msg.getString("ToUserName").indexOf("@@") != -1) {
+				} else if (msg.getString("FromUserName").indexOf("@@") != -1) {
 					String[] peopleContent = content.split(":<br/>");
 					LOGGER.info("|" + name + "| " + peopleContent[0] + ":\n" + peopleContent[1].replace("<br/>", "\n"));
+
+					// 监听群的消息,然后把关注的消息发给主号
+					if (Matchers.matchBoolean("([利润|佣金]+[0-9]+)|([0-9]+[元收|元佣金|收|佣金]+)|(返[0-9]+)", content)) {
+						String neirong = contactMap.get(msg.getString("FromUserName")) + ":" + content.replaceAll("<br/>", "\n");
+						webwxsendmsg(neirong, Master.getString("UserName"));
+					}
 				} else {
 					LOGGER.info(name + ": " + content);
 					String ans = xiaodoubi(content);
@@ -507,19 +522,21 @@ public class App {
 					LOGGER.info("自动回复 " + ans);
 				}
 			} else if(msgType == 3){
-				webwxsendmsg("二蛋还不支持图片呢", msg.getString("FromUserName"));
+//				webwxsendmsg("二蛋还不支持图片呢", msg.getString("FromUserName"));
 			} else if(msgType == 34){
-				webwxsendmsg("二蛋还不支持语音呢", msg.getString("FromUserName"));
+//				webwxsendmsg("二蛋还不支持语音呢", msg.getString("FromUserName"));
 			} else if(msgType == 42){
 				LOGGER.info(name + " 给你发送了一张名片:");
 				LOGGER.info("=========================");
+			} else {
+				LOGGER.info("msgType是" + msgType + ",暂时不支持:" + msg);
 			}
 		}
 	}
 	
 	private final String ITPK_API = "http://i.itpk.cn/api.php";
-	private final String API_KEY="你的API_KEY";
-	private final String API_SECRET="你的API_SECRET";
+	private final String API_KEY="7d2d43cd0060528f990ededcc72c7a32";
+	private final String API_SECRET="tmprubc3bvo7";
 	
 	// 这里的api_key和api_secret可以自己申请一个
 	private final String KEY = "?api_key="+API_KEY+"&api_secret="+API_SECRET;
@@ -551,16 +568,24 @@ public class App {
 			public void run() {
 				LOGGER.info("[*] 进入消息监听模式 ...");
 				int playWeChat = 0;
+
+				int times = 1;
 				while(true){
+
+					// 更新通讯录
+					if ((times % 100) == 0) {
+						getContact();
+						times ++;
+					}
 					
 					int[] arr = syncCheck();
 					
 					LOGGER.info("[*] retcode=%s,selector=%s", arr[0], arr[1]);
 					
-					if(arr[0] == 1100){
-//						LOGGER.info("[*] 你在手机上登出了微信，债见");
-//						break;
-						arr = syncCheck();
+					if(arr[0] == 1101){
+						LOGGER.info("[*] 你在手机上登出了微信，债见");
+						break;
+//						arr = syncCheck();
 					}
 					
 					if(arr[0] == 0){
@@ -575,20 +600,26 @@ public class App {
 							LOGGER.info("[*] 你在手机上玩微信被我发现了 %d 次", playWeChat);
 							webwxsync();
 						} else if(arr[1] == 3){
+							try {
+								Thread.sleep(20000);
+							} catch (InterruptedException e) {
+								e.printStackTrace();
+							}
 						} else if(arr[1] == 0){
 							try {
-								Thread.sleep(100);
+								Thread.sleep(5000);
 							} catch (InterruptedException e) {
 								e.printStackTrace();
 							}
 						}
 					} else {
 						try {
-							Thread.sleep(1000);
+							Thread.sleep(20000);
 						} catch (InterruptedException e) {
 							e.printStackTrace();
 						}
 					}
+
 				}
 			}
 		}, "listenMsgMode").start();
@@ -608,37 +639,39 @@ public class App {
 			while(!app.waitForLogin().equals("200")){
 				Thread.sleep(2000);
 			}
-			app.closeQrWindow();
-			
+//			app.closeQrWindow();
+
 			if(!app.login()){
 				LOGGER.info("微信登录失败");
 				return;
 			}
-			
+
 			LOGGER.info("[*] 微信登录成功");
-			
+
 			if(!app.wxInit()){
 				LOGGER.info("[*] 微信初始化失败");
 				return;
 			}
-			
+
 			LOGGER.info("[*] 微信初始化成功");
-			
+
 			if(!app.wxStatusNotify()){
 				LOGGER.info("[*] 开启状态通知失败");
 				return;
 			}
-			
+
 			LOGGER.info("[*] 开启状态通知成功");
-			
+
 			if(!app.getContact()){
 				LOGGER.info("[*] 获取联系人失败");
 				return;
 			}
-			
+
 			LOGGER.info("[*] 获取联系人成功");
 			LOGGER.info("[*] 共有 %d 位联系人", app.ContactList.size());
-			
+
+			app.webwxsendmsg("主人好,小小红要开始工作啦。。。", app.Master.getString("UserName"));
+
 			// 监听消息
 			app.listenMsgMode();
 			
