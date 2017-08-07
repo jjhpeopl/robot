@@ -511,7 +511,7 @@ public class App {
 					LOGGER.info("|" + name + "| " + peopleContent[0] + ":\n" + peopleContent[1].replace("<br/>", "\n"));
 
 					// 监听群的消息,然后把关注的消息发给主号
-					if (Matchers.matchBoolean("([利润|佣金]+[0-9]+)|([0-9]+[元收|元佣金|收|佣金]+)|(返[0-9]+)", content)) {
+					if (Matchers.matchBoolean("([利润|佣金]+[0-9]+)|([0-9]+[元收|元佣金|收|佣金]+)|(返[0-9]+)|([0-9]+-[0-9]+)", content)) {
 						String neirong = contactMap.get(msg.getString("FromUserName")) + ":" + content.replaceAll("<br/>", "\n");
 						webwxsendmsg(neirong, Master.getString("UserName"));
 					}
@@ -528,6 +528,9 @@ public class App {
 			} else if(msgType == 42){
 				LOGGER.info(name + " 给你发送了一张名片:");
 				LOGGER.info("=========================");
+			} else if (msgType == 49) {
+				LOGGER.info("收到图文消息,转发给主人看看,msgType:" + msgType + ",内容:" + msg);
+				webwxsendmsg(msg.getString("url"), Master.getString("UserName"));
 			} else {
 				LOGGER.info("msgType是" + msgType + ",暂时不支持:" + msg);
 			}
@@ -584,6 +587,7 @@ public class App {
 					
 					if(arr[0] == 1101){
 						LOGGER.info("[*] 你在手机上登出了微信，债见");
+						webwxsendmsg("您在手机上登出了微信,请查看", Master.getString("UserName"));
 						break;
 //						arr = syncCheck();
 					}
@@ -601,20 +605,20 @@ public class App {
 							webwxsync();
 						} else if(arr[1] == 3){
 							try {
-								Thread.sleep(20000);
+								Thread.sleep(5000);
 							} catch (InterruptedException e) {
 								e.printStackTrace();
 							}
 						} else if(arr[1] == 0){
 							try {
-								Thread.sleep(5000);
+								Thread.sleep(1000);
 							} catch (InterruptedException e) {
 								e.printStackTrace();
 							}
 						}
 					} else {
 						try {
-							Thread.sleep(20000);
+							Thread.sleep(1000);
 						} catch (InterruptedException e) {
 							e.printStackTrace();
 						}

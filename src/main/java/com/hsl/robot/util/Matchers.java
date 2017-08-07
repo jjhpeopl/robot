@@ -41,9 +41,9 @@ public class Matchers {
 	}
 
 	public static void main(String[] args) {
-		String str = "20元,下单";
+		String str = "20元";
 
-		System.out.println(Matchers.matchBoolean("([利润|佣金]+[0-9]+)|([0-9]+[元收|元佣金|收|佣金]+)|(返[0-9]+)", str));
+		System.out.println(Matchers.matchBoolean("([利润|佣金]+[0-9]+)|([0-9]+[元收|元佣金|收|佣金]+)|(返[0-9]+)|([0-9]+-[0-9]+)", str));
 	}
 
 }
