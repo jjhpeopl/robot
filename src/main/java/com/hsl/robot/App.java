@@ -455,6 +455,8 @@ public class App {
 			HttpRequest request = HttpRequest.post(url)
 					.header("Content-Type", "application/json;charset=utf-8")
 					.header("Cookie", this.cookie)
+					.connectTimeout(10000)
+					.readTimeout(10000)
 					.send(body.toString());
 
 			LOGGER.info("[*] " + request);
