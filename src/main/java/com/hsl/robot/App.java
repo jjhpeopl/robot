@@ -530,7 +530,10 @@ public class App {
 				LOGGER.info("=========================");
 			} else if (msgType == 49) {
 				LOGGER.info("收到图文消息,转发给主人看看,msgType:" + msgType + ",内容:" + msg);
-				webwxsendmsg(msg.getString("url"), Master.getString("UserName"));
+				webwxsendmsg(msg.getString("FileName") + ":" + msg.getString("Url"), Master.getString("UserName"));
+			} else if (msgType == 10000 && msg.getString("Content").equalsIgnoreCase("红包")) {
+				LOGGER.info("收到红包,赶紧发给主人抢");
+				webwxsendmsg(contactMap.get(msg.getString("FromUserName")) + ",发红包了,赶紧抢", Master.getString("UserName"));
 			} else {
 				LOGGER.info("msgType是" + msgType + ",暂时不支持:" + msg);
 			}
@@ -586,10 +589,9 @@ public class App {
 					LOGGER.info("[*] retcode=%s,selector=%s", arr[0], arr[1]);
 					
 					if(arr[0] == 1101){
-						LOGGER.info("[*] 你在手机上登出了微信，债见");
-						webwxsendmsg("您在手机上登出了微信,请查看", Master.getString("UserName"));
-						break;
-//						arr = syncCheck();
+//						LOGGER.info("[*] 你在手机上登出了微信，债见");
+//						break;
+						arr = syncCheck();
 					}
 					
 					if(arr[0] == 0){
