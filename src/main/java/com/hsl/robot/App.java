@@ -441,45 +441,52 @@ public class App {
 	 * 获取最新消息
 	 */
 	public JSONObject webwxsync(){
-		
-		String url = this.base_uri + "/webwxsync?lang=zh_CN&pass_ticket=" + this.pass_ticket
-				 + "&skey=" + this.skey + "&sid=" + this.wxsid + "&r=" + DateKit.getCurrentUnixTime();
-		
-		JSONObject body = new JSONObject();
-		body.put("BaseRequest", BaseRequest);
-		body.put("SyncKey", this.SyncKey);
-		body.put("rr", DateKit.getCurrentUnixTime());
-		
-		HttpRequest request = HttpRequest.post(url)
-				.header("Content-Type", "application/json;charset=utf-8")
-				.header("Cookie", this.cookie)
-				.send(body.toString());
-		
-		LOGGER.info("[*] " + request);
-		String res = request.body();
-		request.disconnect();
-		
-		if(StringKit.isBlank(res)){
+
+		try {
+
+			String url = this.base_uri + "/webwxsync?lang=zh_CN&pass_ticket=" + this.pass_ticket
+					+ "&skey=" + this.skey + "&sid=" + this.wxsid + "&r=" + DateKit.getCurrentUnixTime();
+
+			JSONObject body = new JSONObject();
+			body.put("BaseRequest", BaseRequest);
+			body.put("SyncKey", this.SyncKey);
+			body.put("rr", DateKit.getCurrentUnixTime());
+
+			HttpRequest request = HttpRequest.post(url)
+					.header("Content-Type", "application/json;charset=utf-8")
+					.header("Cookie", this.cookie)
+					.send(body.toString());
+
+			LOGGER.info("[*] " + request);
+			String res = request.body();
+			request.disconnect();
+
+			if (StringKit.isBlank(res)) {
+				return null;
+			}
+
+			JSONObject jsonObject = JSON.parse(res).asObject();
+			LOGGER.info("返回最新消息为:" + jsonObject.toString());
+			JSONObject BaseResponse = jsonObject.getJSONObject("BaseResponse");
+			if (null != BaseResponse) {
+				int ret = BaseResponse.getInt("Ret", -1);
+				if (ret == 0) {
+					this.SyncKey = jsonObject.getJSONObject("SyncKey");
+
+					StringBuffer synckey = new StringBuffer();
+					JSONArray list = SyncKey.getJSONArray("List");
+					for (int i = 0, len = list.size(); i < len; i++) {
+						JSONObject item = list.getJSONObject(i);
+						synckey.append("|" + item.getInt("Key", 0) + "_" + item.getInt("Val", 0));
+					}
+					this.synckey = synckey.substring(1);
+				}
+			}
+			return jsonObject;
+		} catch (Exception e) {
+			LOGGER.error("获取最新消息时出现有异常", e);
 			return null;
 		}
-		
-		JSONObject jsonObject = JSON.parse(res).asObject();
-		JSONObject BaseResponse = jsonObject.getJSONObject("BaseResponse");
-		if(null != BaseResponse){
-			int ret = BaseResponse.getInt("Ret", -1);
-			if(ret == 0){
-				this.SyncKey = jsonObject.getJSONObject("SyncKey");
-				
-				StringBuffer synckey = new StringBuffer();
-				JSONArray list = SyncKey.getJSONArray("List");
-				for(int i=0, len=list.size(); i<len; i++){
-					JSONObject item = list.getJSONObject(i);
-					synckey.append("|" + item.getInt("Key", 0) + "_" + item.getInt("Val", 0));
-				}
-				this.synckey = synckey.substring(1);
-			}
-		}
-		return jsonObject;
 	}
 	
 	/**
@@ -589,9 +596,9 @@ public class App {
 					LOGGER.info("[*] retcode=%s,selector=%s", arr[0], arr[1]);
 					
 					if(arr[0] == 1101){
-//						LOGGER.info("[*] 你在手机上登出了微信，债见");
-//						break;
-						arr = syncCheck();
+						LOGGER.info("[*] 你在手机上登出了微信，债见");
+						break;
+//						arr = syncCheck();
 					}
 					
 					if(arr[0] == 0){
